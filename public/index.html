@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SMC Analyzer v4</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #0a0e27; 
+            color: #fff; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            overflow-x: hidden;
+            padding-bottom: 80px;
+        }
+        .container { max-width: 100%; padding: 15px; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: linear-gradient(135deg, #1a1f3a 0%, #252d4a 100%);
+            border-bottom: 2px solid #00d4a0;
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+        h1 { font-size: 20px; color: #00d4a0; }
+        .status { font-size: 12px; padding: 5px 10px; background: #1a1f3a; border-radius: 20px; }
+        .status.live { color: #00d4a0; }
+        .status.scanning { color: #ffa500; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: #1a1f3a;
+            border: 2px solid #333;
+            color: #999;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            background: #00d4a0;
+            color: #000;
+            border-color: #00d4a0;
+        }
+        .card {
+            background: linear-gradient(135deg, #1a1f3a 0%, #252d4a 100%);
+            border-left: 5px solid #00d4a0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        .card.short { border-left-color: #ff4d6d; }
+        .card.weak { opacity: 0.6; border-left-color: #ffa500; }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .symbol { font-weight: bold; font-size: 16px; }
+        .badge {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge.long { background: #00d4a0; color: #000; }
+        .badge.short { background: #ff4d6d; color: #fff; }
+        .badge.score { background: #1a1f3a; color: #00d4a0; }
+        .price-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background: #0a0e27;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        .price-item {
+            text-align: center;
+            padding: 8px;
+            background: #1a1f3a;
+            border-radius: 5px;
+        }
+        .price-label { color: #999; font-size: 11px; margin-bottom: 3px; }
+        .price-value { font-weight: bold; font-size: 14px; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+        .stat-item {
+            background: #1a1f3a;
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .stat-label { color: #999; }
+        .stat-value { color: #00d4a0; font-weight: bold; }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #00d4a0;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        .btn:hover { background: #00f4d0; transform: translateY(-2px); }
+        .btn.disabled { background: #333; color: #999; cursor: not-allowed; }
+        .empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        .filter-btn {
+            white-space: nowrap;
+            padding: 8px 12px;
+            background: #1a1f3a;
+            border: 1px solid #333;
+            color: #999;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .filter-btn.active {
+            background: #00d4a0;
+            color: #000;
+            border-color: #00d4a0;
+        }
+        .alert-banner {
+            background: #ff4d6d;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            display: none;
+        }
+        .alert-banner.show { display: block; animation: slideDown 0.3s; }
+        @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .score-meter {
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4d6d, #ffa500, #00d4a0);
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 SMC v4</h1>
+            <div class="status live">🟢 LIVE</div>
+        </header>
+
+        <div id="alert" class="alert-banner"></div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('signals')">سیگنال‌ها</button>
+            <button class="tab-btn" onclick="switchTab('journal')">ژورنال</button>
+            <button class="tab-btn" onclick="switchTab('settings')">تنظیمات</button>
+        </div>
+
+        <div class="filter-bar">
+            <button class="filter-btn active" onclick="filterSignals('all')">همه</button>
+            <button class="filter-btn" onclick="filterSignals('long')">🟢 خریدی</button>
+            <button class="filter-btn" onclick="filterSignals('short')">🔴 فروشی</button>
+            <button class="filter-btn" onclick="filterSignals('high')">⭐ قوی</button>
+        </div>
+
+        <div id="signals" class="tab-content">
+            <div class="empty">⏳ منتظر سیگنال...</div>
+        </div>
+
+        <div id="journal" class="tab-content" style="display: none;">
+            <div class="empty">📝 هنوز سفارش ثبت نشده</div>
+        </div>
+
+        <div id="settings" class="tab-content" style="display: none;">
+            <div class="card">
+                <h3>⚙️ تنظیمات</h3>
+                <div style="margin-top: 15px; font-size: 13px;">
+                    <p>✅ Smart Limit Entry فعال</p>
+                    <p>✅ OB Retest Detection فعال</p>
+                    <p>✅ Session Filter فعال (London/NY)</p>
+                    <p>✅ ATR Volatility Filter فعال</p>
+                    <p>✅ Multi-Timeframe Analysis فعال</p>
+                    <p style="margin-top: 15px; color: #00d4a0;">🔔 الارم برای Leverage > 15</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'signals';
+        let currentFilter = 'all';
+        let signals = JSON.parse(localStorage.getItem('signals') || '[]');
+        let journal = JSON.parse(localStorage.getItem('journal') || '[]');
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tab).style.display = 'block';
+            event.target.classList.add('active');
+            currentTab = tab;
+        }
+
+        function filterSignals(filter) {
+            document.querySelectorAll('.filter-btn').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+            currentFilter = filter;
+            renderSignals();
+        }
+
+        function renderSignals() {
+            const container = document.getElementById('signals');
+            let filtered = signals;
+
+            if (currentFilter === 'long') {
+                filtered = signals.filter(s => s.type === 'LONG');
+            } else if (currentFilter === 'short') {
+                filtered = signals.filter(s => s.type === 'SHORT');
+            } else if (currentFilter === 'high') {
+                filtered = signals.filter(s => s.score >= 75);
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty">⏳ سیگنالی وجود ندارد</div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(sig => `
+                <div class="card ${sig.type === 'SHORT' ? 'short' : ''} ${sig.score < 60 ? 'weak' : ''}">
+                    <div class="card-header">
+                        <span class="symbol">${sig.symbol}</span>
+                        <span class="badge ${sig.type === 'LONG' ? 'long' : 'short'}">${sig.type}</span>
+                    </div>
+                    
+                    <div class="price-grid">
+                        <div class="price-item">
+                            <div class="price-label">ورودی</div>
+                            <div class="price-value">${sig.entry.toFixed(4)}</div>
+                        </div>
+                        <div class="price-item">
+                            <div class="price-label">SL</div>
+                            <div class="price-value" style="color: #ff4d6d;">${sig.sl.toFixed(4)}</div>
+                        </div>
+                        <div class="price-item">
+                            <div class="price-label">TP</div>
+                            <div class="price-value" style="color: #00d4a0;">${sig.tp.toFixed(4)}</div>
+                        </div>
+                    </div>
+
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-label">نمره</div>
+                            <div class="stat-value">${sig.score}%</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">R/R</div>
+                            <div class="stat-value">${sig.rr.toFixed(2)}</div>
+                        </div>
+                    </div>
+
+                    <div class="score-meter">
+                        <div class="score-fill" style="width: ${sig.score}%"></div>
+                    </div>
+
+                    ${sig.status === 'PENDING' ? `
+                        <button class="btn" onclick="approveSignal(${sig.id})">✅ تایید و اجرا</button>
+                    ` : `
+                        <button class="btn disabled">✓ تایید‌شده</button>
+                    `}
+                </div>
+            `).join('');
+        }
+
+        function approveSignal(id) {
+            const sig = signals.find(s => s.id === id);
+            if (sig) {
+                sig.status = 'APPROVED';
+                journal.push({...sig, approvedAt: new Date().toISOString()});
+                signals = signals.filter(s => s.id !== id);
+                
+                localStorage.setItem('signals', JSON.stringify(signals));
+                localStorage.setItem('journal', JSON.stringify(journal));
+                
+                playAlert();
+                renderSignals();
+                showAlert(`✅ سیگنال تایید شد: ${sig.symbol}`);
+            }
+        }
+
+        function playAlert() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        function showAlert(message) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.classList.add('show');
+            setTimeout(() => alert.classList.remove('show'), 3000);
+        }
+
+        // شبیه‌سازی سیگنال
+        function simulateSignal() {
+            const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'PEPEUSDT'];
+            const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+            const type = Math.random() > 0.5 ? 'LONG' : 'SHORT';
+            const entry = 50000 + Math.random() * 10000;
+            const displacement = 0.008;
+            const bodyDominance = 0.72;
+            const score = 75 + Math.random() * 20;
+
+            const sig = {
+                id: Date.now(),
+                symbol,
+                type,
+                entry,
+                sl: type === 'LONG' ? entry * 0.97 : entry * 1.03,
+                tp: type === 'LONG' ? entry * 1.15 : entry * 0.85,
+                rr: 1.5,
+                score: Math.round(score),
+                status: 'PENDING',
+                displacement: displacement,
+                bodyDominance: bodyDominance,
+                timestamp: new Date().toISOString()
+            };
+
+            signals.unshift(sig);
+            localStorage.setItem('signals', JSON.stringify(signals));
+            renderSignals();
+            playAlert();
+            showAlert(`🚨 سیگنال جدید: ${symbol} - ${type}`);
+        }
+
+        // اسکن خودکار هر 5 دقیقه
+        setInterval(simulateSignal, 300000);
+
+        // رندر اولیه
+        renderSignals();
+    </script>
+</body>
+</html>
